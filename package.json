@@ -1,17 +1,21 @@
 {
-  "name": "mcp-server-google-search",
+  "name": "google-search-mcp-server",
+  "description": "A comprehensive Model Context Protocol (MCP) server that provides advanced Google Custom Search functionality, web content extraction, search analytics, and specialized research tools.",
   "version": "1.0.0",
+  "author": "Azzar Budiyanto",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node --esm index.ts",
+    "clean": "rm -rf dist",
     "lint": "eslint . --ext .ts",
     "test": "jest --coverage"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.5.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
     "axios": "^1.4.0",
     "axios-retry": "^3.3.1",
     "cheerio": "^1.0.0-rc.12",
