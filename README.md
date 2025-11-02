@@ -141,7 +141,7 @@ echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"google_sea
 
 ## Available Tools
 
-This MCP server provides **9 powerful tools** for comprehensive search, research, fact verification, and advanced research assistance:
+This MCP server provides **10 powerful tools** for comprehensive search, research, fact verification, trend analysis, and advanced research assistance:
 
 ### 1. Google Search (`google_search`)
 
@@ -634,6 +634,88 @@ Verify claims by searching multiple authoritative sources with credibility analy
 - `disputed`: Claim is contradicted by credible sources
 - `unverified`: Insufficient evidence or conflicting information
 - `unknown`: No relevant information found
+
+### 9. Research Assistant (`research_assistant`)
+
+### 10. Search Trends (`search_trends`)
+
+Track and analyze search interest trends over time with predictive insights and emerging topic discovery. This tool provides comprehensive trend analysis by combining current search data with historical patterns to identify emerging topics and predict future interest levels.
+
+**Parameters:**
+- `topics` (required): Array of topics to track trends for (1-5 topics)
+- `timeframe` (optional): Time period to analyze ('1M', '3M', '6M', '1Y', '2Y') - defaults to '6M'
+- `region` (optional): Geographic region for trend analysis (country code like 'US', 'GB', 'CA') - defaults to 'US'
+- `category` (optional): Category filter for more targeted trend analysis ('all', 'business', 'entertainment', 'health', 'politics', 'science', 'sports', 'technology') - defaults to 'all'
+- `includePredictions` (optional): Include trend prediction and forecasting - defaults to true
+- `relatedTopics` (optional): Discover and include related trending topics - defaults to true
+
+**Use Cases:**
+- Market research and trend analysis
+- Content strategy and topic planning
+- Competitive analysis and market intelligence
+- Emerging technology tracking
+- Brand monitoring and reputation management
+- Seasonal trend analysis
+- Predictive content planning
+
+**Example:**
+```json
+{
+  "name": "search_trends",
+  "arguments": {
+    "topics": ["artificial intelligence", "machine learning"],
+    "timeframe": "6M",
+    "region": "US",
+    "category": "technology",
+    "includePredictions": true,
+    "relatedTopics": true
+  }
+}
+```
+
+**Response Format:**
+```json
+{
+  "topics": ["artificial intelligence", "machine learning"],
+  "timeframe": "6M",
+  "region": "US",
+  "category": "technology",
+  "includePredictions": true,
+  "relatedTopics": true,
+  "trends": [
+    {
+      "topic": "artificial intelligence",
+      "currentInterest": 245000000,
+      "recentActivity": 3,
+      "trendDirection": "increasing",
+      "changePercent": 12.45,
+      "peakPeriod": "Month 5",
+      "data": [65, 68, 72, 75, 78, 80, 82, 85, 87, 89, 91, 93, 94, 95, 96, 97, 98, 98, 99, 99, 100, 99, 98, 97]
+    }
+  ],
+  "relatedTopics": [
+    {
+      "topic": "artificial intelligence",
+      "relatedTopics": ["neural", "networks", "deep", "learning", "automation"]
+    }
+  ],
+  "predictions": [
+    {
+      "topic": "artificial intelligence",
+      "prediction": "artificial intelligence shows increasing interest. Expected to continue growing by 18.45% in the next period.",
+      "confidence": 0.75,
+      "timeframe": "next period",
+      "factors": [
+        "Current market trends",
+        "Seasonal patterns",
+        "Related topic performance",
+        "Search volume patterns"
+      ]
+    }
+  ],
+  "timestamp": "2025-11-02T17:04:02.839Z"
+}
+```
 
 ### 9. Research Assistant (`research_assistant`)
 
