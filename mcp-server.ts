@@ -3,7 +3,10 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
   Tool,
+  Resource,
 } from '@modelcontextprotocol/sdk/types.js';
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
@@ -552,8 +555,62 @@ const searchTrendsSchema = z.object({
   relatedTopics: z.boolean().optional(),
 });
 
+// Resource definitions
+const resources: Resource[] = [
+  {
+    uri: "google://search/cache/{query}",
+    name: "Cached Search Results",
+    description: "Recently cached Google search results for a query with metadata and timestamps",
+    mimeType: "application/json",
+  },
+  {
+    uri: "google://search/trends/{topic}",
+    name: "Search Trends Data",
+    description: "Search interest trends and predictions for a specific topic over time",
+    mimeType: "application/json",
+  },
+  {
+    uri: "google://search/analytics/{query}",
+    name: "Search Analytics",
+    description: "Analytics data including multiple search results, patterns, and insights for a query",
+    mimeType: "application/json",
+  },
+  {
+    uri: "google://content/extracted/{url}",
+    name: "Extracted Content Cache",
+    description: "Cached extracted content, sentiment analysis, and metadata from a web page",
+    mimeType: "application/json",
+  },
+  {
+    uri: "google://news/recent/{topic}",
+    name: "Recent News Feed",
+    description: "Recent news articles and updates for a specific topic with credibility analysis",
+    mimeType: "application/json",
+  },
+  {
+    uri: "google://academic/results/{query}",
+    name: "Academic Search Results",
+    description: "Cached academic papers and research documents for a scholarly query",
+    mimeType: "application/json",
+  },
+  {
+    uri: "google://research/summary/{topic}",
+    name: "Research Summary",
+    description: "Comprehensive research summary with sources, analysis, and key findings",
+    mimeType: "application/json",
+  },
+  {
+    uri: "google://fact/check/{claim}",
+    name: "Fact Check Results",
+    description: "Fact verification results with supporting evidence and credibility scores",
+    mimeType: "application/json",
+  },
+];
+
 class GoogleSearchMCPServer {
   private server: Server;
+  private cache: Map<string, { data: any; timestamp: number; ttl: number }> = new Map();
+  private readonly DEFAULT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
     this.server = new Server(
@@ -564,11 +621,46 @@ class GoogleSearchMCPServer {
       {
         capabilities: {
           tools: {},
+          resources: {},
         },
       }
     );
 
     this.setupToolHandlers();
+    this.setupResourceHandlers();
+  }
+
+  private getCacheKey(type: string, params: any): string {
+    return `${type}:${JSON.stringify(params)}`;
+  }
+
+  private getCachedData(key: string): any | null {
+    const cached = this.cache.get(key);
+    if (!cached) return null;
+
+    if (Date.now() - cached.timestamp > cached.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return cached.data;
+  }
+
+  private setCachedData(key: string, data: any, ttl: number = this.DEFAULT_CACHE_TTL): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl
+    });
+  }
+
+  private cleanupExpiredCache(): void {
+    const now = Date.now();
+    for (const [key, cached] of this.cache.entries()) {
+      if (now - cached.timestamp > cached.ttl) {
+        this.cache.delete(key);
+      }
+    }
   }
 
   private setupToolHandlers() {
@@ -580,7 +672,7 @@ class GoogleSearchMCPServer {
     });
 
     // Call tool handler
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    this.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
       const { name, arguments: args } = request.params;
 
       try {
@@ -619,6 +711,276 @@ class GoogleSearchMCPServer {
           ],
           isError: true,
         };
+      }
+    });
+  }
+
+  private setupResourceHandlers() {
+    // List resources handler
+    this.server.setRequestHandler(ListResourcesRequestSchema, async () => {
+      return {
+        resources,
+      };
+    });
+
+    // Read resource handler
+    this.server.setRequestHandler(ReadResourceRequestSchema, async (request: any) => {
+      const { uri } = request.params;
+
+      try {
+        // Handle cached search results
+        if (uri.startsWith("google://search/cache/")) {
+          const query = decodeURIComponent(uri.replace("google://search/cache/", ""));
+          const cacheKey = this.getCacheKey('search_cache', { query });
+
+          let data = this.getCachedData(cacheKey);
+          if (!data) {
+            // Perform search and cache results
+            const searchResult = await this.performGoogleSearch({ q: query, num: 5 });
+            data = {
+              query,
+              results: searchResult.items || [],
+              searchTime: searchResult.searchTime,
+              totalResults: searchResult.totalResults,
+              cached: false,
+              timestamp: new Date().toISOString(),
+            };
+            this.setCachedData(cacheKey, data);
+          } else {
+            data.cached = true;
+          }
+
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: "application/json",
+                text: JSON.stringify(data, null, 2),
+              },
+            ],
+          };
+        }
+
+        // Handle search trends
+        if (uri.startsWith("google://search/trends/")) {
+          const topic = decodeURIComponent(uri.replace("google://search/trends/", ""));
+          const cacheKey = this.getCacheKey('search_trends', { topic });
+
+          let data = this.getCachedData(cacheKey);
+          if (!data) {
+            // Get trends data
+            const trendsResult = await this.performSearchTrends({ topics: [topic], timeframe: '6M' });
+            data = {
+              topic,
+              trends: trendsResult,
+              cached: false,
+              timestamp: new Date().toISOString(),
+            };
+            this.setCachedData(cacheKey, data);
+          } else {
+            data.cached = true;
+          }
+
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: "application/json",
+                text: JSON.stringify(data, null, 2),
+              },
+            ],
+          };
+        }
+
+        // Handle search analytics
+        if (uri.startsWith("google://search/analytics/")) {
+          const query = decodeURIComponent(uri.replace("google://search/analytics/", ""));
+          const cacheKey = this.getCacheKey('search_analytics', { query });
+
+          let data = this.getCachedData(cacheKey);
+          if (!data) {
+            // Get analytics data
+            const analyticsResult = await this.performSearchAnalytics({ queries: [query] });
+            data = {
+              query,
+              analytics: analyticsResult,
+              cached: false,
+              timestamp: new Date().toISOString(),
+            };
+            this.setCachedData(cacheKey, data);
+          } else {
+            data.cached = true;
+          }
+
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: "application/json",
+                text: JSON.stringify(data, null, 2),
+              },
+            ],
+          };
+        }
+
+        // Handle extracted content
+        if (uri.startsWith("google://content/extracted/")) {
+          const url = decodeURIComponent(uri.replace("google://content/extracted/", ""));
+          const cacheKey = this.getCacheKey('content_extracted', { url });
+
+          let data = this.getCachedData(cacheKey);
+          if (!data) {
+            // Extract content
+            const extractedResult = await this.extractContent({ url });
+            data = {
+              url,
+              content: extractedResult,
+              cached: false,
+              timestamp: new Date().toISOString(),
+            };
+            this.setCachedData(cacheKey, data);
+          } else {
+            data.cached = true;
+          }
+
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: "application/json",
+                text: JSON.stringify(data, null, 2),
+              },
+            ],
+          };
+        }
+
+        // Handle recent news
+        if (uri.startsWith("google://news/recent/")) {
+          const topic = decodeURIComponent(uri.replace("google://news/recent/", ""));
+          const cacheKey = this.getCacheKey('news_recent', { topic });
+
+          let data = this.getCachedData(cacheKey);
+          if (!data) {
+            // Get news data
+            const newsResult = await this.performNewsMonitor({ topic });
+            data = {
+              topic,
+              news: newsResult,
+              cached: false,
+              timestamp: new Date().toISOString(),
+            };
+            this.setCachedData(cacheKey, data, 2 * 60 * 1000); // 2 minutes for news
+          } else {
+            data.cached = true;
+          }
+
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: "application/json",
+                text: JSON.stringify(data, null, 2),
+              },
+            ],
+          };
+        }
+
+        // Handle academic results
+        if (uri.startsWith("google://academic/results/")) {
+          const query = decodeURIComponent(uri.replace("google://academic/results/", ""));
+          const cacheKey = this.getCacheKey('academic_results', { query });
+
+          let data = this.getCachedData(cacheKey);
+          if (!data) {
+            // Get academic data
+            const academicResult = await this.performAcademicSearch({ query });
+            data = {
+              query,
+              results: academicResult,
+              cached: false,
+              timestamp: new Date().toISOString(),
+            };
+            this.setCachedData(cacheKey, data, 30 * 60 * 1000); // 30 minutes for academic
+          } else {
+            data.cached = true;
+          }
+
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: "application/json",
+                text: JSON.stringify(data, null, 2),
+              },
+            ],
+          };
+        }
+
+        // Handle research summary
+        if (uri.startsWith("google://research/summary/")) {
+          const topic = decodeURIComponent(uri.replace("google://research/summary/", ""));
+          const cacheKey = this.getCacheKey('research_summary', { topic });
+
+          let data = this.getCachedData(cacheKey);
+          if (!data) {
+            // Get research summary
+            const researchResult = await this.performResearchAssistant({ researchTopic: topic });
+            data = {
+              topic,
+              summary: researchResult,
+              cached: false,
+              timestamp: new Date().toISOString(),
+            };
+            this.setCachedData(cacheKey, data, 60 * 60 * 1000); // 1 hour for research
+          } else {
+            data.cached = true;
+          }
+
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: "application/json",
+                text: JSON.stringify(data, null, 2),
+              },
+            ],
+          };
+        }
+
+        // Handle fact check
+        if (uri.startsWith("google://fact/check/")) {
+          const claim = decodeURIComponent(uri.replace("google://fact/check/", ""));
+          const cacheKey = this.getCacheKey('fact_check', { claim });
+
+          let data = this.getCachedData(cacheKey);
+          if (!data) {
+            // Get fact check data
+            const factCheckResult = await this.performFactChecker({ claim });
+            data = {
+              claim,
+              verification: factCheckResult,
+              cached: false,
+              timestamp: new Date().toISOString(),
+            };
+            this.setCachedData(cacheKey, data, 24 * 60 * 60 * 1000); // 24 hours for facts
+          } else {
+            data.cached = true;
+          }
+
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: "application/json",
+                text: JSON.stringify(data, null, 2),
+              },
+            ],
+          };
+        }
+
+        throw new Error(`Unknown resource: ${uri}`);
+      } catch (error) {
+        throw new Error(`Failed to read resource ${uri}: ${error instanceof Error ? error.message : String(error)}`);
       }
     });
   }
@@ -1634,7 +1996,7 @@ class GoogleSearchMCPServer {
     for (const topic of validatedArgs.topics) {
       try {
         // Generate mock trend data (in a real implementation, this would use Google Trends API)
-        const trendData = this.generateMockTrendData(topic, validatedArgs.timeframe);
+        const trendData = this.generateMockTrendData(topic, validatedArgs.timeframe || '6M');
 
         // Perform searches to get current interest indicators
         const searchParams: Record<string, string> = {
@@ -2226,6 +2588,78 @@ class GoogleSearchMCPServer {
     const findingsQuality = Math.min(findingsCount / 10, 1); // Normalize to 10 findings
     
     return (sourceDiversity * 0.25 + avgCredibility * 0.25 + synthesisConfidence * 0.25 + findingsQuality * 0.25);
+  }
+
+  // Resource helper methods
+  private async performGoogleSearch(params: any) {
+    const validatedArgs = searchQuerySchema.parse(params);
+
+    const apiParams: Record<string, string> = {
+      key: config.GOOGLE_API_KEY,
+      cx: config.GOOGLE_CSE_ID,
+      q: validatedArgs.q,
+    };
+
+    // Add optional parameters
+    const validParams = ['fileType', 'siteSearch', 'dateRestrict', 'safe', 'exactTerms', 'excludeTerms', 'sort', 'gl', 'hl', 'num', 'start'];
+    Object.entries(validatedArgs).forEach(([key, value]) => {
+      if (key !== 'q' && value !== undefined && validParams.includes(key)) {
+        apiParams[key] = String(value);
+      }
+    });
+
+    try {
+      const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
+        params: apiParams,
+      });
+
+      return {
+        items: response.data.items || [],
+        searchTime: response.data.searchInformation?.searchTime,
+        totalResults: response.data.searchInformation?.totalResults,
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error?.message || error.message;
+        throw new Error(`Google Search API error: ${errorMessage}`);
+      }
+      throw error;
+    }
+  }
+
+  private async performSearchTrends(params: any) {
+    const validatedArgs = searchTrendsSchema.parse(params);
+    return await this.handleSearchTrends(validatedArgs);
+  }
+
+  private async performSearchAnalytics(params: any) {
+    const validatedArgs = searchAnalyticsSchema.parse(params);
+    return await this.handleSearchAnalytics(validatedArgs);
+  }
+
+  private async extractContent(params: any) {
+    const validatedArgs = extractSchema.parse(params);
+    return await this.handleExtractContent(validatedArgs);
+  }
+
+  private async performNewsMonitor(params: any) {
+    const validatedArgs = newsMonitorSchema.parse(params);
+    return await this.handleNewsMonitor(validatedArgs);
+  }
+
+  private async performAcademicSearch(params: any) {
+    const validatedArgs = academicSearchSchema.parse(params);
+    return await this.handleAcademicSearch(validatedArgs);
+  }
+
+  private async performResearchAssistant(params: any) {
+    const validatedArgs = researchAssistantSchema.parse(params);
+    return await this.handleResearchAssistant(validatedArgs);
+  }
+
+  private async performFactChecker(params: any) {
+    const validatedArgs = factCheckerSchema.parse(params);
+    return await this.handleFactChecker(validatedArgs);
   }
 
   async run() {

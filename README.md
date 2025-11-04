@@ -11,8 +11,12 @@ A comprehensive Model Context Protocol (MCP) server that provides advanced Googl
 - **News Monitoring**: Monitor news sources with topic filtering and date restrictions
 - **Academic Research**: Specialized tools for finding academic papers and research documents
 - **Content Summarization**: Intelligent summarization of multiple URLs with sentiment analysis and insights
+- **Fact Checking**: Automated fact verification with evidence-based results
+- **Search Trends**: Real-time search interest analysis and trend prediction
+- **Cached Resources**: 8 specialized resources providing cached search results, analytics, and research data
 - **MCP Compatible**: Seamlessly integrates with any MCP-compatible AI client (Claude, Cursor, etc.)
 - **Robust Error Handling**: Comprehensive error handling for API failures, rate limiting, and invalid parameters
+- **Intelligent Caching**: TTL-based caching system optimizing performance and API usage
 - **TypeScript**: Fully typed with Zod schema validation for all parameters
 
 ## Prerequisites
@@ -893,6 +897,240 @@ Comprehensive research assistant with multi-step workflows, source synthesis, an
 - **Confidence Level**: Overall confidence in research findings based on source agreement
 - **Source Diversity**: Number of different source categories included
 - **Content Quality**: Assessment of extracted content relevance and depth
+
+## Available Resources
+
+Google Search MCP Server provides **8 specialized resources** that offer cached search results, trend analysis, and research data with intelligent caching for optimal performance:
+
+### `google://search/cache/{query}`
+Returns cached Google search results for a query with metadata and timestamps.
+
+**Resource Details:**
+- **Purpose**: Access recently cached search results without API calls
+- **Benefits**: Faster response times, reduced API usage, offline capability for recent searches
+- **Cache TTL**: 5 minutes - balances freshness with performance
+- **Use Cases**: Frequently accessed search terms, monitoring queries, development testing
+
+**Response Format:**
+```json
+{
+  "query": "artificial intelligence",
+  "results": [
+    {
+      "title": "Artificial Intelligence - Wikipedia",
+      "link": "https://en.wikipedia.org/wiki/Artificial_intelligence",
+      "snippet": "Artificial intelligence (AI) is intelligence demonstrated by machines..."
+    }
+  ],
+  "searchTime": "0.25",
+  "totalResults": "about 2,450,000,000",
+  "cached": false,
+  "timestamp": "2025-11-02T17:09:14.866Z"
+}
+```
+
+### `google://search/trends/{topic}`
+Provides search interest trends and predictions for topics over time.
+
+**Resource Details:**
+- **Purpose**: Analyze search interest patterns and predict trends
+- **Benefits**: Market research, content strategy, trend identification
+- **Cache TTL**: 5 minutes - keeps trend data reasonably current
+- **Use Cases**: SEO analysis, content planning, market research
+
+**Response Format:**
+```json
+{
+  "topic": "machine learning",
+  "trends": {
+    "interest": [25, 30, 45, 60, 55, 70],
+    "timeframe": "6M",
+    "region": "US",
+    "predictions": [75, 80, 85]
+  },
+  "cached": false,
+  "timestamp": "2025-11-02T17:09:14.866Z"
+}
+```
+
+### `google://search/analytics/{query}`
+Provides comprehensive search analytics including multiple results and patterns.
+
+**Resource Details:**
+- **Purpose**: Deep analysis of search results and patterns
+- **Benefits**: Comprehensive search intelligence and pattern recognition
+- **Cache TTL**: 5 minutes - ensures analytical data stays relevant
+- **Use Cases**: Competitive analysis, keyword research, content optimization
+
+**Response Format:**
+```json
+{
+  "query": "renewable energy",
+  "analytics": {
+    "totalResults": 1250000,
+    "topDomains": ["wikipedia.org", "energy.gov", "iea.org"],
+    "contentTypes": ["educational": 45, "commercial": 30, "news": 25],
+    "sentiment": {"positive": 0.6, "neutral": 0.3, "negative": 0.1}
+  },
+  "cached": false,
+  "timestamp": "2025-11-02T17:09:14.866Z"
+}
+```
+
+### `google://content/extracted/{url}`
+Provides cached extracted content with sentiment analysis from web pages.
+
+**Resource Details:**
+- **Purpose**: Access processed web content without re-extraction
+- **Benefits**: Faster content analysis, reduced processing overhead
+- **Cache TTL**: 5 minutes - balances content freshness with performance
+- **Use Cases**: Content monitoring, sentiment analysis, data extraction
+
+**Response Format:**
+```json
+{
+  "url": "https://example.com/article",
+  "content": {
+    "title": "Article Title",
+    "text": "Full article content...",
+    "wordCount": 1250,
+    "sentiment": {
+      "score": 0.3,
+      "comparative": 0.024,
+      "tokens": ["article", "content", "analysis"],
+      "words": ["good", "excellent"],
+      "positive": ["good", "excellent"],
+      "negative": []
+    },
+    "readability": 72.5
+  },
+  "cached": false,
+  "timestamp": "2025-11-02T17:09:14.866Z"
+}
+```
+
+### `google://news/recent/{topic}`
+Provides recent news articles with credibility analysis for topics.
+
+**Resource Details:**
+- **Purpose**: Access recent news with quality filtering
+- **Benefits**: Time-sensitive information with credibility scoring
+- **Cache TTL**: 2 minutes - ensures news stays current
+- **Use Cases**: News monitoring, crisis management, current events tracking
+
+**Response Format:**
+```json
+{
+  "topic": "climate change",
+  "news": {
+    "articles": [
+      {
+        "title": "New Climate Report Released",
+        "source": "reuters.com",
+        "credibility": 0.95,
+        "published": "2025-11-02T15:30:00Z",
+        "summary": "Latest IPCC report details..."
+      }
+    ],
+    "totalArticles": 15,
+    "avgCredibility": 0.87
+  },
+  "cached": false,
+  "timestamp": "2025-11-02T17:09:14.866Z"
+}
+```
+
+### `google://academic/results/{query}`
+Provides cached academic papers and research documents.
+
+**Resource Details:**
+- **Purpose**: Access scholarly research without repeated searches
+- **Benefits**: Faster academic research, reduced API usage for research queries
+- **Cache TTL**: 30 minutes - academic content changes less frequently
+- **Use Cases**: Literature reviews, research planning, academic writing
+
+**Response Format:**
+```json
+{
+  "query": "quantum computing",
+  "results": {
+    "papers": [
+      {
+        "title": "Advances in Quantum Computing",
+        "authors": ["Dr. Jane Smith", "Dr. John Doe"],
+        "journal": "Nature Physics",
+        "year": 2025,
+        "citations": 45,
+        "doi": "10.1038/s41567-025-01234-5"
+      }
+    ],
+    "totalPapers": 1250,
+    "disciplines": ["Physics", "Computer Science", "Mathematics"]
+  },
+  "cached": false,
+  "timestamp": "2025-11-02T17:09:14.866Z"
+}
+```
+
+### `google://research/summary/{topic}`
+Provides comprehensive research summaries with sources and analysis.
+
+**Resource Details:**
+- **Purpose**: Access complete research synthesis without reprocessing
+- **Benefits**: In-depth research insights with comprehensive analysis
+- **Cache TTL**: 1 hour - research summaries are stable over longer periods
+- **Use Cases**: Executive summaries, research reports, strategic planning
+
+**Response Format:**
+```json
+{
+  "topic": "blockchain technology",
+  "summary": {
+    "executiveSummary": "Blockchain technology continues to evolve...",
+    "keyFindings": [
+      "Decentralized consensus mechanisms improving",
+      "Enterprise adoption accelerating",
+      "Regulatory frameworks emerging"
+    ],
+    "sourcesAnalyzed": 25,
+    "confidenceLevel": 0.89,
+    "methodology": "Multi-source analysis with peer review"
+  },
+  "cached": false,
+  "timestamp": "2025-11-02T17:09:14.866Z"
+}
+```
+
+### `google://fact/check/{claim}`
+Provides fact verification results with supporting evidence.
+
+**Resource Details:**
+- **Purpose**: Access fact-checking results for claims
+- **Benefits**: Reliable fact verification with evidence trails
+- **Cache TTL**: 24 hours - facts don't change frequently
+- **Use Cases**: Content verification, journalism, educational fact-checking
+
+**Response Format:**
+```json
+{
+  "claim": "The Earth is flat",
+  "verification": {
+    "verdict": "False",
+    "confidence": 1.0,
+    "evidence": [
+      {
+        "source": "NASA Scientific Consensus",
+        "type": "Scientific Evidence",
+        "strength": "Overwhelming",
+        "summary": "Multiple independent measurements confirm spherical Earth"
+      }
+    ],
+    "lastUpdated": "2025-11-01T10:00:00Z"
+  },
+  "cached": false,
+  "timestamp": "2025-11-02T17:09:14.866Z"
+}
+```
 
 ## Development
 
